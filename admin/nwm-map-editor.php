@@ -68,6 +68,7 @@ function nwm_map_editor() {
                                 <option selected="selected" value="nwm-blog-excerpt"><?php _e( 'Post excerpt', 'nwm' ); ?></option> 
                                 <option value="nwm-custom-text"><?php _e( 'Custom content', 'nwm' ); ?></option> 
                                 <option value="nwm-travel-schedule"><?php _e( 'Travel schedule', 'nwm' ); ?></option> 
+                                <option value="nwm-blog-category"><?php _e( 'Category', 'nwm' ); ?></option> 
                            </select>
                         </p>
                         <div id="nwm-blog-excerpt" class="nwm-blog-title nwm-marker-option">
@@ -86,6 +87,31 @@ function nwm_map_editor() {
                                 <em id="char-limit" class="nwm-desc"><?php _e( 'Keep it short, 25 words remaining.', 'nwm' ); ?></em>
                             </p>
                         </div>
+                        
+                        <div id="nwm-blog-category" class="nwm-marker-option nwm-hide">
+                            <p>
+                                <label for="nwm-blog-category-option"><?php _e( 'Category:', 'nwm' ); ?></label>
+                                <?php
+                                $args = array(
+                                	'orderby'            => 'ID', 
+                                	'order'              => 'ASC',
+                                	'show_count'         => true,
+                                	'hide_empty'         => false, 
+                                	'hierarchical'       => true, 
+                                	'id'                 => 'nwm-blog-category-option',
+                                );
+    
+                                wp_dropdown_categories( $args );
+                                    
+                                ?>
+                                <div id="nwm-search-category">Error retrieving description.</div>
+                            </p>
+                            <p class="nwm-textarea-wrap">
+                                <label for="nwm-category-desc"><?php _e( 'Description:', 'nwm' ); ?></label>
+                                <textarea readonly="readonly" id="nwm-category-desc" data-length="25" cols="5" rows="5"></textarea>
+                            </p>
+                        </div>
+                        
                     </div>
                     
                     <div id="nwm-location-position">
@@ -213,6 +239,12 @@ function nwm_build_tr_list( $collected_destinations ) {
 		} else {
 			$travel_schedule = '';	
 		}
+
+		if ( $nwm_location['data']['cat_id'] ) {
+			$cat_id = 'data-cat-id="' . $nwm_location['data']['cat_id'] . '"';
+		} else {
+			$cat_id = '';	
+		}
 		
 		if ( $nwm_location['data']['url'] ) {
 			$url = '<a href="'. esc_url( $nwm_location['data']['url'] ) .'" title="'. esc_url( $nwm_location['data']['url'] ) .'">' . esc_url( $nwm_location['data']['url']  ) .'</a>';
@@ -238,7 +270,7 @@ function nwm_build_tr_list( $collected_destinations ) {
         /* Select the correct country code */
         $country_code = ( $nwm_location['data']['country_code'] ) ? $nwm_location['data']['country_code'] : $response['country_code']['short_name'];
         
-		$output .= '<tr '. $travel_schedule .' data-nwm-id="'. esc_attr( $nwm_location['data']['nwm_id'] ) . '"data-country="' . esc_attr( $country_code ) . '" data-latlng="' . esc_attr( $nwm_location['lat'] ) . ',' . esc_attr( $nwm_location['lng'] ) . '" data-post-id="'. esc_attr( $nwm_location['data']['post_id'] ) .'">'."\n"; 	
+		$output .= '<tr '. $travel_schedule .' data-nwm-id="'. esc_attr( $nwm_location['data']['nwm_id'] ) . '"data-country="' . esc_attr( $country_code ) . '" data-latlng="' . esc_attr( $nwm_location['lat'] ) . ',' . esc_attr( $nwm_location['lng'] ) . '" data-post-id="'. esc_attr( $nwm_location['data']['post_id'] ) .'" ' . $cat_id . '>'."\n"; 	
 		$output .= '<td class="nwm-order"><span>' . $i .'</span></td>'."\n";
 		$output .= '<td class="nwm-location">' . $flag_url . ' ' .  esc_html( $nwm_location['data']['location'] ) .'</td>'."\n";
 		$output .= '<td class="nwm-url">'. $url .'</td>'."\n";

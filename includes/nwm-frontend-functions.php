@@ -49,9 +49,10 @@ function nwm_show_map( $atts, $content = null ) {
 	} else {
         $map_settings['contentLocation'] = $settings['content_location'];
     }
-
+    
+    $map_data = get_transient( 'nwm_locations_'.$id );
 	/* Check if there is an existing transient we can use */
-	if ( false === ( $map_data = get_transient( 'nwm_locations_'.$id ) ) ) {	
+	if ( false === ( $map_data ) ) {	
 		$nwm_route_order = get_option( 'nwm_route_order' );
 		$date_format     = get_option( 'date_format' );
 		$route_order     = esc_sql( implode( ',', wp_parse_id_list( $nwm_route_order[$id] ) ) );
@@ -59,7 +60,7 @@ function nwm_show_map( $atts, $content = null ) {
 		$json_data       = '';
 
 		$nwm_location_data = $wpdb->get_results("
-												SELECT nwm_id, post_id, thumb_id, lat, lng, location, arrival, departure
+												SELECT nwm_id, post_id, thumb_id, lat, lng, location, arrival, departure, cat_id
 												FROM $wpdb->nwm_routes
 												WHERE nwm_id IN ( $route_order )
 												ORDER BY field( nwm_id, $route_order )
@@ -87,7 +88,12 @@ function nwm_show_map( $atts, $content = null ) {
 			}
 			
 			/* If we have no post_id get the data from the custom table*/
-			if ( !$nwm_location->post_id ) {
+			if ( $nwm_location->post_id ) {
+				$publish_date = get_the_time( $date_format, $nwm_location->post_id );
+				$post_data    = nwm_collect_post_data( $nwm_location, $publish_date, $future, $date_format);
+			} else if ($nwm_location->cat_id) {
+                $post_data = nwm_collect_category_data ($nwm_location, $publish_date, $future, $date_format);
+            } else {
 				$nwm_custom_data = $wpdb->get_results( 'SELECT content, url, title FROM ' . $wpdb->nwm_custom . ' WHERE nwm_id = ' . absint( $nwm_location->nwm_id ) . '' );
 				$custom_content  = '';	
 				$custom_url      = '';
@@ -111,10 +117,6 @@ function nwm_show_map( $atts, $content = null ) {
 					'departure' => esc_html( nwm_convert_date_format( $date_format, $nwm_location->departure ) ),
 					'future'    => esc_html( $future )
 				);			   
-								   
-			} else {
-				$publish_date = get_the_time( $date_format, $nwm_location->post_id );
-				$post_data    = nwm_collect_post_data( $nwm_location, $publish_date, $future, $date_format );
 			}
 
 			$data[] = array( 
@@ -199,7 +201,6 @@ function nwm_show_map( $atts, $content = null ) {
 						 
 		set_transient( 'nwm_locations_'.$id, $map_data, $transient_lifetime ); 
 	}
-  
     $frontend_data['location_data'] = $map_data;
     
     if ( $map_count == 0 ) {
@@ -426,6 +427,30 @@ function nwm_collect_post_data( $nwm_location, $publish_date, $future, $date_for
 	
 }
 
+/* Collect the description, thumbnail and permalink that belongs to the $cat_id */
+function nwm_collect_category_data( $nwm_location, $publish_date, $future, $date_format ) {	
+	
+	$description   = nwm_get_category_description( $nwm_location->cat_id );
+	$permalink     = get_category_link( $nwm_location->cat_id );
+	$title         = get_cat_name( $nwm_location->cat_id );
+	
+	$nwm_category_data = array( 
+		'nwm_id'    => ( int ) $nwm_location->nwm_id,
+		'thumb'     => esc_url( nwm_get_thumb( $nwm_location->thumb_id ) ),
+		'url'       => esc_url( $permalink ),
+		'content'   => esc_html( $description ),
+		'title'     => esc_html( $title ),
+		'location'  => esc_html( $nwm_location->location ),
+		'date'      => esc_html( $publish_date ),
+		'arrival'   => esc_html( nwm_convert_date_format( $date_format, $nwm_location->arrival ) ),
+		'departure' => esc_html( nwm_convert_date_format( $date_format, $nwm_location->departure ) ),
+		'future'    => esc_html( $future )
+	  );
+	
+	return $nwm_category_data;
+	
+}
+
 /* Get the thumb src based on the thumb_id */
 function nwm_get_thumb( $thumb_id ) {	
 	$thumb = wp_get_attachment_image_src( $thumb_id, 'thumbnail' );	
@@ -461,6 +486,20 @@ function nwm_get_post_excerpt ( $post_id ) {
 	endif;
 		$the_excerpt = $the_excerpt;
 	return $the_excerpt;	
+	
+}
+
+/* Get the category description */
+function nwm_get_category_description ( $cat_id ) {
+
+	$category = get_category( $cat_id );
+    $description = "";
+    
+    if( $category !== null) {
+        $description    = $category->category_description;        
+    }
+	
+	return $description;	
 	
 }
 

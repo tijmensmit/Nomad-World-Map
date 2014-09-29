@@ -54,6 +54,7 @@ function nwm_create_tables() {
 						     nwm_id int(10) unsigned NOT NULL auto_increment,
 							 post_id bigint(20) unsigned NOT NULL,
 							 thumb_id bigint(20) unsigned NOT NULL,
+							 cat_id bigint(20) unsigned,
 							 schedule tinyint(1) NOT NULL,
 							 lat float(10,6) NOT NULL,
 							 lng float(10,6) NOT NULL,

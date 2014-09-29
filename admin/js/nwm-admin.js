@@ -354,6 +354,9 @@ $( "#nwm-marker-content-option" ).change( function () {
 	} else if ( dropdownValue == "nwm-travel-schedule" ) {
 		$( ".nwm-dates input" ).attr( "placeholder", "" );
 		$( ".nwm-date-desc" ).hide();
+	} else if ( dropdownValue == "nwm-blog-category" ) {
+		$( ".nwm-dates input" ).attr( "placeholder", "optional" );
+		$( ".nwm-date-desc" ).hide();
 	} else {
 		$( ".nwm-dates input" ).attr( "placeholder", "optional" );
 		$( ".nwm-date-desc" ).hide();
@@ -381,6 +384,7 @@ function addTrip( elem ) {
 	var destinationUrl,
 		tripData = {
 			postId: $( "#nwm-post-id" ).val(),
+			catId: $( "#nwm-blog-category-option" ).val(),
 			mapId: $( "#nwm-map-list" ).val(),
 			thumbId: $( "#nwm-thumb-wrap img" ).attr( "data-img-id" ),
 			countryCode: $( "#nwm-country-code" ).val(),
@@ -417,7 +421,8 @@ function saveDestination( tripData ) {
 		lastData = {
 			post_id: tripData.postId,
 			map_id: tripData.mapId,
-			thumb_id: tripData.thumbId
+			thumb_id: tripData.thumbId,
+            cat_id: tripData.catId
 		},
 		markerContentOption = $( "#nwm-marker-content-option" ).val(),
 		saveNonce			= $( "#nwm-add-destination" ).data( "nonce-save" );
@@ -442,6 +447,14 @@ function saveDestination( tripData ) {
 			arrival: $( "#nwm-from-date" ).val(),
 			departure: $( "#nwm-till-date" ).val()
 		};	
+	} else if ( markerContentOption == "nwm-blog-category" ) {
+		lastData.category = {
+			latlng:	tripData.destinationLatlng,
+			location: tripData.destinationName,
+			country_code: tripData.countryCode,
+			arrival: $( "#nwm-from-date" ).val(),
+			departure: $( "#nwm-till-date" ).val()
+		}; 
 	} else {
 		lastData.excerpt = {
 			latlng:	tripData.destinationLatlng,
@@ -751,7 +764,7 @@ function updateDestination( tripData ) {
 			arrival: $( "#nwm-from-date" ).val(),
 			departure: $( "#nwm-till-date" ).val()
 		 };	
-	} else {
+	} else if ( tripData.markerContentOption == "nwm-blog-excerpt" ) {
 		lastData.excerpt = {
 			post_id: $( "#nwm-post-id" ).val(),
 			last_id: $( "[data-nwm-id=" + tripData.nwmId + "]" ).attr( "data-post-id" ),
@@ -761,6 +774,16 @@ function updateDestination( tripData ) {
 			arrival: $( "#nwm-from-date" ).val(),
 			departure: $( "#nwm-till-date" ).val()
 		};
+	} else if ( tripData.markerContentOption == "nwm-blog-category" ) {
+	    lastData.category = {
+            cat_id: $("#nwm-blog-category-option").val(),
+			last_id: $( "[data-nwm-id=" + tripData.nwmId + "]" ).attr( "data-cat-id" ),
+			latlng:	tripData.latlng,
+			location: tripData.location,
+			country_code: tripData.countryCode,
+			arrival: $( "#nwm-from-date" ).val(),
+			departure: $( "#nwm-till-date" ).val()
+        };
 	}
 	
 	lastData = JSON.stringify( lastData );
@@ -1291,7 +1314,7 @@ function setTravelDates( routeId ) {
 
 /* Set the content of the edit form based on the nwm post id */
 function setEditFormContent( dropdownValue ) {
-	var routeId, thumbId, thumbSrc, postType, destination, latlng, postId, travelSchedule, url, tr;
+	var routeId, thumbId, thumbSrc, postType, destination, latlng, postId, travelSchedule, url, tr, cat_id;
 	
 	$( ".nwm-dates input" ).val( "" );
 	
@@ -1310,6 +1333,7 @@ function setEditFormContent( dropdownValue ) {
 				thumbId		   = tr.find( ".nwm-thumb-td img" ).attr( "data-thumb-id" );
 				thumbSrc	   = tr.find( ".nwm-thumb-td img" ).attr( "src" );
 				travelSchedule = tr.attr( "data-travel-schedule" );
+				catId         = tr.attr( "data-cat-id" );
 				
 				/* If we have no src then show the placeholder */
 				if ( typeof( thumbSrc ) !== "undefined" ) {
@@ -1321,14 +1345,14 @@ function setEditFormContent( dropdownValue ) {
 				/* Check if we need to add the edit button, or just need to update the nonce value */				
 				checkEditButton( routeId );
 
-				/* Check if we need to show the excerpt edit fields, the custom text or the travel schedule */
+				/* Check if we need to show the excerpt edit fields, the custom text, the travel schedule or the category dropdown */
 				if ( postId != 0 ) {
 					postType = "blog";
 					url = $( "[data-nwm-id=" + routeId + "] .nwm-url" ).html();
 					$( "#nwm-search-link span" ).html( url );
 					$( "#nwm-marker-content-option option[value=nwm-blog-excerpt]" ).attr( "selected", "selected" );
 					$( "#nwm-blog-excerpt").show();
-					$( "#nwm-custom-text" ).hide();
+					$( "#nwm-custom-text, #nwm-blog-category" ).hide();
 					$( ".nwm-dates input" ).attr( "placeholder", "optional" );
 										
 					$( "#nwm-marker-content-option" ).change( function() {
@@ -1336,11 +1360,50 @@ function setEditFormContent( dropdownValue ) {
 					});
 				} else if ( travelSchedule ) {
 					postType = "schedule";
-					$( "#nwm-blog-excerpt, #nwm-custom-text, .nwm-date-desc" ).hide();
+					$( "#nwm-blog-excerpt, #nwm-custom-text, .nwm-date-desc, #nwm-blog-category" ).hide();
 					$( "#nwm-marker-content-option option[value=nwm-travel-schedule]" ).attr( "selected", "selected" );
 					$( "#nwm-search-link span").html( "" );
 					$( ".nwm-dates input" ).attr( "placeholder", "" );
-				} else {
+				} else if ( catId ) {
+                    postType = "category";
+					$( "#nwm-blog-excerpt, #nwm-custom-text, .nwm-date-desc" ).hide();
+                    $( "#nwm-blog-category" ).show();
+					$( ".nwm-dates input" ).attr( "placeholder", "optional" );
+					$( "#nwm-blog-category-option option[value=" + catId + "]" ).attr( "selected", "selected" );
+					$( "#nwm-marker-content-option option[value=nwm-blog-category]" ).attr( "selected", "selected" );
+                    // Get description
+                    
+            		ajaxData = {
+            			action: "find_category_description",
+            			cat_id: catId,
+            			_ajax_nonce: $( "#nwm-search-nonce" ).val()
+            		};
+        
+            		/* Show the preloader next to the clicked button */
+            		showPreloader( $(this) );
+        
+            		$.post( ajaxurl, ajaxData, function( response ) {				
+            			if ( response == -1 ) {
+            				$( "#nwm-add-trip" ).after( "<span id='nwm-nonce-fail'>" + nwmL10n.securityFailed + "</span>" );
+            			} else {									
+            				if ( !response.category.id ) { 
+            					$( "#nwm-search-category" ).html( "<strong>" + nwmL10n.errorRetrievingCategoryDescription + "</strong>" );
+            				} else {
+            					$( "#nwm-search-category" ).html( "" );
+            					$( "#nwm-category-desc" ).html( response.category.description );
+            					$( "#nwm-category-id" ).val( response.category.id );
+
+            					if ( response.category.thumb != null ) {
+            						setLocationThumb( response.category.thumb, response.category.thumb_id ); 
+            					} else {
+            						$( "#nwm-reset-thumb" ).trigger( "click" );
+            					}
+            				}
+            			}
+			
+            			$( ".nwm-preloader" ).remove();	
+            		});
+                } else{
 					postType = "custom";
 					activateCustomText();
 					loadCustomText( routeId );
@@ -1388,7 +1451,7 @@ function activateCustomText() {
 	$( ".nwm-dates input" ).attr( "placeholder", "optional" );
 	$( "#nwm-search-link span" ).html( "" );
 	$( "#nwm-marker-content-option option[value=nwm-custom-text]" ).prop( "selected", true );
-	$( "#nwm-blog-excerpt, .nwm-date-desc" ).hide();
+	$( "#nwm-blog-excerpt, .nwm-date-desc, #nwm-blog-category" ).hide();
 	$( "#nwm-custom-text" ).show();
 }
 
@@ -1748,5 +1811,48 @@ function changeMarkerPosition( adjustedLatlng, i ) {
 if ( $( "#gmap-nwm" ).length ) {
 	initializeGmap();
 }
+
+/* Retrieves the selected category's description */
+$( "#nwm-blog-category" ).on( "change", "select", function( e ) {
+    var categoryId = $('#nwm-blog-category-option').val(),
+        categoryDesc, 
+        ajaxData;
+    console.log("Trying to retrieve the description for category " + e.target.value);
+    
+    if( categoryId ) {
+		ajaxData = {
+			action: "find_category_description",
+			cat_id: categoryId,
+			_ajax_nonce: $( "#nwm-search-nonce" ).val()
+		};
+        
+		/* Show the preloader next to the clicked button */
+		showPreloader( $(this) );
+        
+		$.post( ajaxurl, ajaxData, function( response ) {				
+			if ( response == -1 ) {
+				$( "#nwm-add-trip" ).after( "<span id='nwm-nonce-fail'>" + nwmL10n.securityFailed + "</span>" );
+			} else {									
+				if ( !response.category.id ) { 
+					$( "#nwm-search-category" ).html( "<strong>" + nwmL10n.errorRetrievingCategoryDescription + "</strong>" );
+				} else {
+					$( "#nwm-search-category" ).html( "" );
+					$( "#nwm-category-desc" ).html( response.category.description );
+					$( "#nwm-category-id" ).val( response.category.id );
+
+					if ( response.category.thumb != null ) {
+						setLocationThumb( response.category.thumb, response.category.thumb_id ); 
+					} else {
+						$( "#nwm-reset-thumb" ).trigger( "click" );
+					}
+				}
+			}
+			
+			$( ".nwm-preloader" ).remove();	
+		});
+    } else {
+		$( "#nwm-blog-category-option" ).addClass( "nwm-error" );	
+	}
+});
                 
 });

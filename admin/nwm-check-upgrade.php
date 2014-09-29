@@ -193,6 +193,36 @@ function nwm_version_updates() {
         
        nwm_delete_all_transients();  
     }
+
+    if ( version_compare( $current_version, '1.2.40', '<' ) ) {
+       	global $wpdb;
+        
+		$charset_collate = '';
+	
+		if ( !empty( $wpdb->charset ) )
+			$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
+		if ( !empty( $wpdb->collate ) )
+			$charset_collate .= " COLLATE $wpdb->collate";	
+			
+		/* Add the cat_id field to the table */
+		$sql = "CREATE TABLE " . $wpdb->nwm_routes . " (
+							 nwm_id int(10) unsigned NOT NULL auto_increment,
+							 post_id bigint(20) unsigned NOT NULL,
+							 thumb_id bigint(20) unsigned NOT NULL,
+							 cat_id bigint(20) unsigned,
+							 schedule tinyint(1) NOT NULL,
+							 lat float(10,6) NOT NULL,
+							 lng float(10,6) NOT NULL,
+							 location varchar(255) NOT NULL,
+                             iso2_country_code char(2) NULL,
+							 arrival datetime NULL default '0000-00-00 00:00:00',
+							 departure datetime NULL default '0000-00-00 00:00:00',
+				PRIMARY KEY (nwm_id)
+							 ) $charset_collate;";
+							 
+		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+		dbDelta($sql); 
+    }
 	
 	update_option( 'nwm_version', NWN_VERSION_NUM );
 }
