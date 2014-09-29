@@ -161,7 +161,7 @@ function nwm_process_map_changes( $nwm_map_ids, $nwm_route_order ) {
 	
 	global $wpdb;
 	
-	if ( !current_user_can( 'manage_options' ) )
+	if ( !current_user_can( 'nwm_manage_maps' ) )
 		die( '-1' );
 		
 	if ( isset( $_POST['nwm_map_manager'] ) ) {
