@@ -160,7 +160,7 @@ function geocodeDraggedPosition( pos ) {
 		latLng: pos
 	}, function( responses ) {
 		if ( responses && responses.length > 0 ) {
-			updateLocationFields( responses );
+			updateLocationFields( responses, pos );
 		} else {
 			alert( nwmL10n.addressFailed );
 		}
@@ -168,13 +168,13 @@ function geocodeDraggedPosition( pos ) {
 }
 
 /* Update the input fields with the received data */
-function updateLocationFields( responses ) {
+function updateLocationFields( responses, pos ) {
 	var fullLocation = filterApiResponse( responses ),
 		coordinates  = stripCoordinates( responses[0].geometry.location ),
 		lat			 = roundLatlng( coordinates[0], 6 ),
 		lng			 = roundLatlng( coordinates[1], 6 );
 	
-	$( "#nwm-latlng" ).val( lat + "," + lng );
+	$( "#nwm-latlng" ).val( pos.lat() + "," + pos.lng() );
 	$( "#nwm-searched-location" ).val( fullLocation.location );
 	$( "#nwm-country-code" ).val( fullLocation.country_code );
 }
