@@ -11,6 +11,7 @@ add_action( 'wp_ajax_update_order', 'nwm_update_order' );
 add_action( 'wp_ajax_load_content', 'nwm_load_content' );
 add_action( 'wp_ajax_load_map', 'nwm_load_map' );
 add_action( 'wp_ajax_find_post_title', 'nwm_find_post_title' );
+add_action( 'wp_ajax_find_category_description', 'nwm_find_category_description' );
 add_action( 'save_post', 'nwm_check_used_id' );
 add_filter( 'wp_loaded', 'nwm_load_textdomain' );
 
@@ -52,7 +53,7 @@ function nwm_save_location() {
 		
 	$recieved_data = json_decode( stripslashes( $_POST['last_update'] ) );
 	
-	if ( ( ( isset( $recieved_data->excerpt ) ) && ( !empty( $recieved_data->excerpt ) ) ) || ( isset( $recieved_data->schedule ) && ( !empty( $recieved_data->schedule ) ) ) ) {
+	if ( ( ( isset( $recieved_data->excerpt ) ) && ( !empty( $recieved_data->excerpt ) ) ) || ( isset( $recieved_data->schedule ) && ( !empty( $recieved_data->schedule ) ) ) || ( isset( $recieved_data->category ) && !empty( $recieved_data->category ) ) ) {
 		$last_id = nwm_save_location_excerpt( $recieved_data );
 	} else {
 		$last_id = nwm_save_location_custom( $recieved_data );
@@ -108,16 +109,24 @@ function nwm_save_location_excerpt( $recieved_data ) {
 	if ( ( isset( $recieved_data->schedule ) ) && ( !empty( $recieved_data->schedule ) ) ) {
 		$post_id       = 0;
 		$schedule      = 1;
+        $cat_id        = null;
 		$recieved_data = $recieved_data->schedule;
+    } else if ( isset( $recieved_data->category ) && !empty( $recieved_data->category ) ) {
+		$post_id       = 0;
+		$schedule      = 0;
+        $cat_id        = absint( $recieved_data->cat_id );
+		$recieved_data = $recieved_data->category;        
 	} else {
 		$post_id       = absint( $recieved_data->post_id );
 		$schedule      = 0;
+        $cat_id        = null;
 		$recieved_data = $recieved_data->excerpt;
 	}
     
     $location_data = array(
         "post_id"      => $post_id,
         "thumb_id"     => $thumb_id,
+        "cat_id"       => $cat_id,
         "latlng"       => nwm_check_latlng( $recieved_data->latlng ),
         "location"     => sanitize_text_field( $recieved_data->location ),
         "country_code" => sanitize_text_field( $recieved_data->country_code ),
@@ -295,7 +304,8 @@ function nwm_update_location() {
                 "latlng"       => nwm_check_latlng( $recieved_data->excerpt->latlng ),
                 "dates"        => nwm_check_travel_dates( $recieved_data->excerpt ),
                 "country_code" => sanitize_text_field( $recieved_data->excerpt->country_code ),
-                "schedule"     => 0
+                "schedule"     => 0,
+                "cat_id"       => 0,
             );
             
 			/* Check if we need to update the list of used post ids */
@@ -322,6 +332,44 @@ function nwm_update_location() {
 			}
 		}
 	}
+
+	/* Check if the received data is for a blog category */
+	if ( ( isset( $recieved_data->category ) ) && ( !empty( $recieved_data->category ) ) ) {
+		$cat_id = absint( $recieved_data->category->cat_id );
+		if ( $cat_id ) { 
+            $location_data = array(
+                "post_id"      => 0,
+                "nwm_id"       => $nwm_id,
+                "thumb_id"     => $thumb_id,
+                "location"     => sanitize_text_field( $recieved_data->category->location ),
+                "latlng"       => nwm_check_latlng( $recieved_data->category->latlng ),
+                "dates"        => nwm_check_travel_dates( $recieved_data->category ),
+                "country_code" => sanitize_text_field( $recieved_data->category->country_code ),
+                "schedule"     => 0,
+                "cat_id"       => $cat_id
+            );
+			
+			/* Check if this entry used to be a custom entry, if so we need to delete the data from the custom table */
+			$delete_result = nwm_check_custom_delete( $recieved_data, $nwm_id );			
+			
+			/* Update the location table */
+			$result = nwm_update_location_query( $location_data );
+			
+			if ( ( $result === false ) || ( $delete_result === false ) ) {	
+				wp_send_json_error();
+			} else {	
+				nwm_delete_transients( $map_id );
+                
+				$response = array( 
+                    'success' => true, 
+                    'type'    => 'category', 
+                    'url'     => esc_url( get_category_link( $cat_id ) )
+                );
+								  
+				wp_send_json( $response );
+			}
+		}
+	}
 	
 	/* Check if the recieved data contains custom content */
 	if ( ( isset( $recieved_data->custom ) ) && ( !empty( $recieved_data->custom ) ) ) {
@@ -333,7 +381,8 @@ function nwm_update_location() {
             "latlng"       => nwm_check_latlng( $recieved_data->custom->latlng ),
             "dates"        => nwm_check_travel_dates( $recieved_data->custom ),
             "country_code" => sanitize_text_field( $recieved_data->custom->country_code ),
-            "schedule"     => 0
+            "schedule"     => 0,
+            "cat_id"       => 0
         );
         $marker_content = nwm_limit_words( sanitize_text_field( $recieved_data->custom->content ), 25 );
 		$title          = sanitize_text_field( $recieved_data->custom->title );
@@ -381,7 +430,8 @@ function nwm_update_location() {
             "latlng"       => nwm_check_latlng( $recieved_data->schedule->latlng ),
             "dates"        => nwm_check_travel_dates( $recieved_data->schedule ),
             "country_code" => sanitize_text_field( $recieved_data->schedule->country_code ),
-            "schedule"     => 1
+            "schedule"     => 1,
+            "cat_id"       => 0
         );
         
 		/* Check if there is an previous custom entry we need to delete */
@@ -505,7 +555,7 @@ function nwm_update_location_query( $location_data ) {
 
 	$result = $wpdb->query( 
 					$wpdb->prepare( "UPDATE $wpdb->nwm_routes 
-									 SET post_id = %d, thumb_id = %d, schedule = %d, lat = %s, lng = %s, location = %s, iso2_country_code = %s, arrival = %s, departure = %s 
+									 SET post_id = %d, thumb_id = %d, schedule = %d, lat = %s, lng = %s, location = %s, iso2_country_code = %s, arrival = %s, departure = %s, cat_id = %d
                                      WHERE nwm_id = %d",
 									 $location_data['post_id'], 
 									 $location_data['thumb_id'], 
@@ -516,6 +566,7 @@ function nwm_update_location_query( $location_data ) {
                                      $location_data['country_code'],
 									 $location_data['dates']['arrival'], 
 									 $location_data['dates']['departure'], 
+                                     $location_data['cat_id'],
 									 $location_data['nwm_id']
 								   )
 					);	
@@ -615,8 +666,8 @@ function nwm_insert_location( $location_data ) {
 			  		$wpdb->prepare ( 
 							"
 							INSERT INTO $wpdb->nwm_routes
-							(post_id, thumb_id, schedule, lat, lng, location, iso2_country_code, arrival, departure)
-							VALUES (%d, %d, %d, %s, %s, %s, %s, %s, %s)
+							(post_id, thumb_id, schedule, lat, lng, location, iso2_country_code, arrival, departure, cat_id)
+							VALUES (%d, %d, %d, %s, %s, %s, %s, %s, %s, %d)
 							", 
 							$location_data['post_id'],
 							$location_data['thumb_id'],
@@ -626,7 +677,8 @@ function nwm_insert_location( $location_data ) {
 							$location_data['location'],
                             $location_data['country_code'],
 							$location_data['dates']['arrival'],
-							$location_data['dates']['departure']
+							$location_data['dates']['departure'],
+							$location_data['cat_id']
 						)
 			  );	
 
@@ -741,7 +793,7 @@ function nwm_map_editor_data( $nwm_map_id ) {
     if ( isset( $nwm_route_order[$nwm_map_id] ) ) {
         $route_order = esc_sql( implode( ',', wp_parse_id_list( $nwm_route_order[$nwm_map_id] ) ) );
         $route_data  = $wpdb->get_results( 
-                                          "SELECT nwm_id, post_id, thumb_id, schedule, lat, lng, location, iso2_country_code, arrival, departure 
+                                          "SELECT nwm_id, post_id, thumb_id, schedule, lat, lng, location, iso2_country_code, arrival, departure, cat_id
                                            FROM $wpdb->nwm_routes 
                                            WHERE nwm_id IN ( $route_order ) 
                                            ORDER BY field(nwm_id, $route_order )
@@ -750,8 +802,16 @@ function nwm_map_editor_data( $nwm_map_id ) {
     }
     
     if ( $route_data ) {
-        foreach ( $route_data as $k => $route_stop ) {	
-            if ( !$route_stop->post_id ) {
+        foreach ( $route_data as $k => $route_stop ) {
+            $cat_id = $route_stop->cat_id;
+            
+            if ( $route_stop->post_id ) {
+                $post_id = $route_stop->post_id;
+                $url = get_permalink( $route_stop->post_id );
+            } else if ( $route_stop->cat_id ) {
+                $post_id  = 0;
+                $url      = get_category_link( $cat_id );
+            } else {
                 $custom_data = $wpdb->get_results( "SELECT url FROM $wpdb->nwm_custom WHERE nwm_id = $route_stop->nwm_id" );
                 $post_id = 0;
                 $url = '';
@@ -759,10 +819,6 @@ function nwm_map_editor_data( $nwm_map_id ) {
                 if ( count( $custom_data ) ) {
                     $url = $custom_data[0]->url;
                 }
-
-            } else {
-                $post_id = $route_stop->post_id;
-                $url = get_permalink( $route_stop->post_id );
             }
 
             if ( $route_stop->thumb_id ) {
@@ -784,7 +840,8 @@ function nwm_map_editor_data( $nwm_map_id ) {
                 'arrival'            => $route_stop->arrival,
                 'arrival_formated'   => nwm_date_format( $route_stop->arrival ),
                 'departure'          => $route_stop->departure,
-                'departure_formated' => nwm_date_format( $route_stop->departure )
+                'departure_formated' => nwm_date_format( $route_stop->departure ),
+                'cat_id'             => $cat_id,
             );
 
             $collected_destinations[] = array( 
@@ -1125,4 +1182,65 @@ function nwm_admin_scripts() {
     
     nwm_check_icon_font_usage();
     
+}
+
+/* Try to find a category that matches the provided ID */
+function nwm_find_category_description() {
+		
+	if ( !current_user_can( 'nwm_edit_route' ) )
+		die( '-1' );
+	check_ajax_referer( 'nwm_nonce_search' );
+	
+    $result = get_category((int)stripslashes( $_POST['cat_id'] ));
+    
+	if ( $result === null || !is_int($result->cat_ID)) {
+        var_dump($result);
+		wp_send_json_error();
+	} else {	
+        $id           = $result->cat_ID;
+        $desc         = $result->category_description;
+        $thumb_url    = null;
+        $thumbnail_id = null;
+                
+        $args = array(
+        	'posts_per_page'   => 1,
+        	'offset'           => 0,
+        	'category'         => $id,
+        	'orderby'          => 'post_date',
+        	'order'            => 'ASC',
+        	'post_status'      => 'publish',
+        	'suppress_filters' => true
+        );
+            
+        $posts = get_posts($args);
+        
+        if( count($posts) > 0 ) {
+            $first_post_id = $posts[0]->ID;
+    		$first_post_thumbnail_id = get_post_thumbnail_id( $first_post_id );
+            
+            if( $first_post_thumbnail_id !== "" && $first_post_thumbnail_id !== false ) {
+                
+        		$thumb = wp_get_attachment_image_src( $first_post_thumbnail_id );
+                
+                if ( isset( $thumb ) ) {
+                    $thumbnail_id = $first_post_thumbnail_id;
+                    $thumb_url = $thumb[0];
+                }
+                
+            }
+            
+        }
+        
+        $response = array( 'category' => 
+                                 array( 
+                                     'id'          => $id, 
+                                     'description' => $desc,
+                                     'thumb_id'    => $thumbnail_id,
+                                     'thumb'       => $thumb_url
+                                 ), 
+         );
+				
+		wp_send_json( $response );	
+	}
+	
 }
