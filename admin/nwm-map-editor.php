@@ -58,7 +58,6 @@ function nwm_map_editor() {
                             }
                         ?>
                        
-                       <input id="nwm-latlng" type="hidden" name="nwm-latlng" value="" />
                        <input id="nwm-country-code" type="hidden" name="nwm-country-code" value="" />
                     </p>
                     
