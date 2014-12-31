@@ -81,7 +81,21 @@ function nwm_create_tables() {
 		
 }
 
+function nwm_add_capabilities() {
+    $editor = get_role( 'editor' );
+    $editor->add_cap( 'nwm_edit_route' ); 
+    $editor->add_cap( 'nwm_manage_maps' );
+	$editor->add_cap( 'nwm_read_faq' );
+
+	$admin = get_role( 'administrator' );
+    $admin->add_cap( 'nwm_manage_options' );
+    $admin->add_cap( 'nwm_edit_route' );
+	$admin->add_cap( 'nwm_manage_maps' );
+	$admin->add_cap( 'nwm_read_faq' );
+}
+
 nwm_default_settings();
 nwm_create_tables();
+nwm_add_capabilities();
 
 ?>

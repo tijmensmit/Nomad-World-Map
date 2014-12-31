@@ -36,17 +36,17 @@ function nwm_init() {
 }
 
 function nwm_create_admin_menu() {
-	add_menu_page( 'Nomad Map', 'Nomad Map', 'manage_options', 'nwm_map_editor', 'nwm_map_editor' );
-	add_submenu_page( 'nwm_map_editor', __( 'Route Editor', 'nwm' ), __( 'Route Editor', 'nwm' ), 'manage_options', 'nwm_map_editor', 'nwm_map_editor' );
-	add_submenu_page( 'nwm_map_editor', __( 'Manage Maps', 'nwm' ), __( 'Manage Maps', 'nwm' ), 'manage_options', 'nwm_manage_maps', 'nwm_manage_maps' );
-	add_submenu_page( 'nwm_map_editor', __( 'Settings', 'nwm' ), __( 'Settings', 'nwm' ), 'manage_options', 'nwm_settings', 'nwm_settings_page' );	
-	add_submenu_page( 'nwm_map_editor', __( 'FAQ', 'nwm' ), __( 'FAQ', 'nwm' ), 'manage_options', 'nwm_faq', 'nwm_faq' );	
+	add_menu_page( 'Nomad Map', 'Nomad Map', 'nwm_edit_route', 'nwm_map_editor', 'nwm_map_editor' );
+	add_submenu_page( 'nwm_map_editor', __( 'Route Editor', 'nwm' ), __( 'Route Editor', 'nwm' ), 'nwm_edit_route', 'nwm_map_editor', 'nwm_map_editor' );
+	add_submenu_page( 'nwm_map_editor', __( 'Manage Maps', 'nwm' ), __( 'Manage Maps', 'nwm' ), 'nwm_manage_maps', 'nwm_manage_maps', 'nwm_manage_maps' );
+	add_submenu_page( 'nwm_map_editor', __( 'Settings', 'nwm' ), __( 'Settings', 'nwm' ), 'nwm_manage_options', 'nwm_settings', 'nwm_settings_page' );	
+	add_submenu_page( 'nwm_map_editor', __( 'FAQ', 'nwm' ), __( 'FAQ', 'nwm' ), 'nwm_read_faq', 'nwm_faq', 'nwm_faq' );
 }
 
 /* Save a new location */
 function nwm_save_location() {
 		
-	if ( !current_user_can( 'manage_options' ) )
+	if ( !current_user_can( 'nwm_edit_route' ) )
 		die( '-1' );
 	check_ajax_referer( 'nwm_nonce_save' );
 		
@@ -200,7 +200,7 @@ function nwm_delete_location() {
 	$post_id = absint( $_POST['post_id'] );
 	$map_id  = absint( $_POST['map_id'] );
 
-	if ( !current_user_can( 'manage_options' ) )
+	if ( !current_user_can( 'nwm_edit_route' ) )
 		die( '-1' );
 	check_ajax_referer( 'nwm_nonce_delete_'.$nwm_id );
 				
@@ -278,7 +278,7 @@ function nwm_update_location() {
 	$map_id        = absint( $recieved_data->map_id );
 	$thumb_id      = nwm_get_thumb_id( $recieved_data );
 
-	if ( !current_user_can( 'manage_options' ) )
+	if ( !current_user_can( 'nwm_edit_route' ) )
 		die( '-1' );
 	check_ajax_referer( 'nwm_nonce_update_'.$nwm_id );	
 	
@@ -454,7 +454,7 @@ function nwm_check_custom_delete( $recieved_data, $nwm_id ) {
 /* Update the option field for the route order and the used wp post ids */
 function nwm_update_order() {
 		
-	if ( !current_user_can( 'manage_options' ) )
+	if ( !current_user_can( 'nwm_edit_route' ) )
 		die( '-1' );
 	check_ajax_referer( 'nwm_nonce_sort' );
 		
@@ -531,7 +531,7 @@ function nwm_load_content() {
 	
 	$nwm_id = absint( $_POST['nwm_id'] );
 		
-	if ( !current_user_can( 'manage_options' ) )
+	if ( !current_user_can( 'nwm_edit_route' ) )
 		die( '-1' );
 	check_ajax_referer( 'nwm_nonce_load_'.$nwm_id );
 						
@@ -643,7 +643,7 @@ function nwm_find_post_title() {
 	
 	global $wpdb;	
 	
-	if ( !current_user_can( 'manage_options' ) )
+	if ( !current_user_can( 'nwm_edit_route' ) )
 		die( '-1' );
 	check_ajax_referer( 'nwm_nonce_search' );
 	
@@ -711,7 +711,7 @@ function nwm_load_map() {
 	
 	$nwm_map_id = absint( $_POST['map_id'] );
 		
-	if ( !current_user_can( 'manage_options' ) )
+	if ( !current_user_can( 'nwm_edit_route' ) )
 		die( '-1' );
 	check_ajax_referer( 'nwm_map_list' );
 	
